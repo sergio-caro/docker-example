@@ -1,0 +1,98 @@
+version: "3.8"
+# Downgrade de la versión para que kompose de Kubernetes se lo coma.
+#version: "3.5"
+services:
+  # Contenedor BBDD
+  db:
+    container_name: postgresql_container
+    build: ./database/
+    image: custom_postgres:1.0 # Nombre de la imagen a crear (ligado al tag build)
+    environment: 
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+    volumes:
+      - ./database/pg-data/:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  # PG Admin
+  pgadmin:
+    container_name: pgadmin4_container
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "${PGADMIN_DEFAULT_EMAIL}"
+      PGADMIN_DEFAULT_PASSWORD: "${PGADMIN_DEFAULT_PASSWORD}"
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+  # Contenedor App
+  app :
+    container_name: python_app_container
+    build: ./app/
+    image: custom_background_app:1.0 # Nombre de la imagen a crear (ligado al tag build)
+    working_dir: /root/app
+    restart: always
+    volumes:
+      - ./app/src:/root/app:cached
+    depends_on:
+      - db
+    environment: 
+      POSTGRES_HOST: "${POSTGRES_HOST}"
+      POSTGRES_HOST_PORT: "${POSTGRES_HOST_PORT}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    expose:
+      - "8000"
+  
+  # Contenedor App
+  app-web :
+    container_name: python_app_web_container
+    build: ./app-web/
+    image: custom_flask_web:1.1 # Nombre de la imagen a crear (ligado al tag build)
+    working_dir: /root/app-web
+    restart: always
+    volumes:
+      - ./app-web/src:/root/app-web:cached
+    depends_on:
+      - db
+    environment: 
+      POSTGRES_HOST: "${POSTGRES_HOST}"
+      POSTGRES_HOST_PORT: "${POSTGRES_HOST_PORT}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      FLASK_ENV: "development"
+    ports:
+      - "6500:6500"
+  
+  # APM Metrics
+  # Prometheus Visualizador de metricas (https://github.com/prometheus/prometheus)
+  # Cliente Python: https://github.com/prometheus/client_python
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - cadvisor
+      - app-web
+      - app
+  # Recolector metricas CPU que usa Prometheus
+  # Container Advisor (https://github.com/google/cadvisor)
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - 8080:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro

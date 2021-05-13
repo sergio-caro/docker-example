@@ -1,0 +1,5 @@
+Flask
+sqlalchemy
+psycopg2
+prometheus_client
+flask_prometheus_metrics
