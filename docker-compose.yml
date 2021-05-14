@@ -31,7 +31,7 @@ services:
   app :
     container_name: python_app_container
     build: ./app/
-    image: custom_background_app:1.0 # Nombre de la imagen a crear (ligado al tag build)
+    image: custom_background_app:1.1 # Nombre de la imagen a crear (ligado al tag build)
     working_dir: /root/app
     restart: always
     volumes:
@@ -47,11 +47,11 @@ services:
     expose:
       - "8000"
   
-  # Contenedor App
+  # Contenedor App-Web
   app-web :
     container_name: python_app_web_container
     build: ./app-web/
-    image: custom_flask_web:1.1 # Nombre de la imagen a crear (ligado al tag build)
+    image: custom_flask_web:1.2 # Nombre de la imagen a crear (ligado al tag build)
     working_dir: /root/app-web
     restart: always
     volumes:
